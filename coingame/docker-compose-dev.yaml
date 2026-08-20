@@ -1,0 +1,146 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: aether_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aether_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: ''
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U admin -d aether_db']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - aether_net
+
+  redis:
+    image: redis:alpine
+    container_name: aether_redis
+    restart: unless-stopped
+    networks:
+      - aether_net
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: aether_rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: ''
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - aether_net
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:22.0.1
+    container_name: aether_keycloak
+    restart: unless-stopped
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ''
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/aether_db
+      KC_DB_USERNAME: admin
+      KC_DB_PASSWORD: ''
+      KC_HOSTNAME: keycloak.moneyback.com.br
+      KC_HOSTNAME_STRICT: 'true'
+      KC_HOSTNAME_STRICT_HTTPS: 'true'
+      KC_HTTP_ENABLED: 'true'
+      KC_PROXY: edge
+      KC_PROXY_HEADERS: xforwarded
+    command: start-dev --import-realm --http-host=0.0.0.0 --hostname-admin=keycloak.moneyback.com.br
+    volumes:
+      - ./infra/keycloak-realm.json:/opt/keycloak/data/import/realm.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - aether_net
+
+  backend:
+    image: ghcr.io/edoardoboechat/coingame:develop
+    pull_policy: always
+    container_name: aether_backend
+    restart: unless-stopped
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        if [ -f /opt/aether/certs/fullchain.pem ]; then
+          keytool -delete -alias aether-nginx -cacerts -storepass changeit >/dev/null 2>&1 || true
+          keytool -importcert -noprompt -trustcacerts -alias aether-nginx -file /opt/aether/certs/fullchain.pem -cacerts -storepass changeit >/dev/null 2>&1 || true
+        fi
+        exec java ${JAVA_OPTS:-} -jar app.jar
+    environment:
+      SERVER_PORT: 80
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      DB_USERNAME: admin
+      DB_PASSWORD: ''
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: ''
+      KEYCLOAK_ISSUER_URI: https://keycloak.moneyback.com.br/realms/aether-quest
+      KEYCLOAK_BASE_URL: http://keycloak:8080
+      KEYCLOAK_REALM: aether-quest
+      KEYCLOAK_CLIENT_ID: aether-client
+      KEYCLOAK_ADMIN_REALM: master
+      KEYCLOAK_ADMIN_CLIENT_ID: admin-cli
+      KEYCLOAK_ADMIN_USERNAME: admin
+      KEYCLOAK_ADMIN_PASSWORD: ''
+    volumes:
+      - ./infra/certs/live/moneyback.com.br:/opt/aether/certs:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    networks:
+      - aether_net
+  adminer:
+    image: adminer:latest
+    container_name: aether_adminer
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - aether_net
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: aether_redis_commander
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    depends_on:
+      - redis
+    networks:
+      - aether_net
+
+  certbot:
+    image: python:3.12-alpine
+    container_name: aether_certbot
+    profiles: ['certbot']
+    environment:
+      CONTABO_CLIENT_ID: ${CONTABO_CLIENT_ID:-}
+      CONTABO_CLIENT_SECRET: ${CONTABO_CLIENT_SECRET:-}
+      CONTABO_API_USER: ${CONTABO_API_USER:-}
+      CONTABO_API_PASSWORD: ${CONTABO_API_PASSWORD:-}
+      CONTABO_DNS_ZONE: moneyback.com.br
+      CONTABO_DNS_TTL: ${CONTABO_DNS_TTL:-60}
+      CONTABO_DNS_PROPAGATION_SECONDS: ${CONTABO_DNS_PROPAGATION_SECONDS:-90}

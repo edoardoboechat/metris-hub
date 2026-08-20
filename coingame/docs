@@ -1,0 +1,709 @@
+# 🎮 AETHER QUEST - ANÁLISE COMPLETA DO STITCH
+
+Data: 21/03/2026
+Status: **~30% Pronto** (UI completa, Backend não iniciado)
+
+---
+
+## 📊 COMPONENTES UI GERADOS (5 Telas Completas)
+
+### 1. 🔐 **Authentication Screen**
+**Localização:** `stitch/stitch_coinhunt/back_end_securityconfig_auth_validation/code.html`
+
+**Funcionalidades:**
+- Selector de Role: PLAYER | ADMIN
+- Campos: Email + Senha
+- Login Social: Google, Discord
+- "Forgot Password" link
+- Remember me checkbox
+- Status: ✅ Completo visualmente
+
+**Integração Necessária:**
+- Keycloak OAuth2 flow
+- Spring Security validation
+- JWT token storage
+
+---
+
+### 2. 🗺️ **Map Explorer (Kinetic Navigator)**
+**Localização:** `stitch/stitch_coinhunt/map_explorer_1/code.html`
+
+**Funcionalidades:**
+- ✅ Google Maps background image (stylized)
+- ✅ Player location marker com glow + pulse animation
+- ✅ 4 Waypoints (coins) espalhados pelo mapa
+- ✅ "TAP TO SCAN" botão principal com gradient + glow
+- ✅ Saldo em destaque no header (€1,240.50)
+- ✅ Coordenadas HUD (LAT/LNG overlay)
+- ✅ Signal Strength indicator
+- ✅ Bottom Nav: EXPLORE (active) | WALLET | RANKINGS | SETTINGS
+
+**Integração Necessária:**
+- Google Maps JavaScript API
+- Geolocation API para posição real
+- WebSocket para atualizações em tempo real
+- Backend endpoint: `POST /api/discovery/scan`
+
+---
+
+### 3. 💳 **Player Wallet**
+**Localização:** `stitch/stitch_coinhunt/player_wallet_1/code.html`
+
+**Funcionalidades:**
+- ✅ Saldo em destaque: $1,240.50 (glassmorphic card)
+- ✅ Kinetic Credits: 12,405 moedas
+- ✅ Reward Progress bar (75% to next chest)
+- ✅ **Protocolo de Contribuição**: Aviso que 50% vai para pool comunitário
+- ✅ Formulário de cartão seguro (card number, expiry, CVC)
+- ✅ Quick-buy buttons: €10, €25, €50, €100
+- ✅ Section "Navigator Access" (compra de tempo):
+  - Standard Pulse: €5 → 1 hour
+  - Kinetic Surge: €12 → 3 hours (2x loot chance)
+- ✅ Recent Transactions history
+
+**Integração Necessária:**
+- Stripe.js para payment form
+- Backend endpoint: `POST /api/wallet/topup` (Stripe webhook)
+- RabbitMQ trigger para 50% coin distribution
+- Backend endpoint: `POST /api/wallet/buy-time`
+
+---
+
+### 4. 🏆 **Leaderboard (Global Rankings)**
+**Localização:** `stitch/stitch_coinhunt/leaderboard_1/code.html`
+
+**Funcionalidades:**
+- ✅ Podium com Top 3 (com avatares + borders coloridos)
+- ✅ Rank #1: "X_AETHER_X" - 285,450 coins (champion badge)
+- ✅ Rank #2: "V0idWalker" - 142,800 coins
+- ✅ Rank #3: "NeonDrifter" - 98,210 coins
+- ✅ Lista expandível: Ranks 4-7+
+- ✅ Colunas: RANK | PLAYER | AETHER COINS
+- ✅ Level + Location por jogador
+- ✅ "Your Rank" card: #412 (com trending up icon)
+- ✅ Load More Data button
+
+**Integração Necessária:**
+- Backend endpoint: `GET /api/leaderboard/top100`
+- Cache em Redis (SortedSet)
+- Real-time updates via WebSocket
+
+---
+
+### 5. 👨‍💼 **Admin Dashboard**
+**Localização:** `stitch/stitch_coinhunt/admin_dashboard_1/code.html`
+
+**Funcionalidades:**
+- ✅ Bento grid com 4 KPIs:
+  - Total Coin Pool: 45,802 (↑12%)
+  - Active Zones: 124 (STABLE)
+  - Global Velocity: 842 c/min
+  - Seeding Efficiency: 98.4%
+- ✅ Tactical map interface com live scan overlay
+- ✅ Waypoints (coins) no mapa com click handlers
+- ✅ Map legend (Standard Yield vs High Value)
+- ⚠️ Incompleto: Seção de gerenciamento de usuários (abaixo do fold)
+
+**Integração Necessária:**
+- Backend endpoints:
+  - `GET /api/admin/stats`
+  - `POST /api/admin/coins/seed` (seeding manual)
+  - `GET /api/admin/users`
+  - `PUT /api/admin/users/{id}/moderate`
+  - `DELETE /api/admin/users/{id}`
+
+---
+
+## 🎨 Design System Implementado
+
+### Paleta de Cores (Neon-Futurista)
+```
+Primary (Cyan):      #c3f5ff, #00e5ff, #00daf3
+Secondary (Gold):    #e9c400, #ffe16d, #ffdb3c
+Surface (Dark):      #0b1326 (base)
+                     #060e20 (lowest)
+                     #131b2e (low)
+                     #171f33 (container)
+                     #222a3d (high)
+                     #2d3449 (highest)
+
+Text (Light):        #dae2fd (on-surface)
+                     #bac9cc (on-surface-variant)
+```
+
+### Tipografia
+```
+Headlines:   Space Grotesk (bold, geometric, futuristic)
+Body:        Manrope (readable, clean)
+Labels:      Space Grotesk (UPPERCASE, tracking-widest)
+Sizes:       text-xs (8px) → text-6xl (60px)
+```
+
+### Componentes Principais
+```
+Buttons:
+  - Primary: gradient(cyan→turquoise) + glow shadow
+  - Secondary: ghost style, transparent
+  - Action: uppercase tracking-wider
+
+Cards:
+  - Glassmorphic: backdrop-blur-12, opacity-70
+  - Border: top-only glow effect
+  - No 1px solid borders (breaking HUD immersion)
+
+Animations:
+  - Pulse: moedas no mapa
+  - Glow: shadow com rgba cyan
+  - Scale: hover effects
+  - Gradient: animated backgrounds
+```
+
+---
+
+## 🔄 FLUXOS DE APLICAÇÃO
+
+### 1. **Fluxo de Login**
+```
+┌─────────────┐
+│   Start     │
+└──────┬──────┘
+       ↓
+┌──────────────────────────────┐
+│ User selects PLAYER/ADMIN    │
+└──────┬───────────────────────┘
+       ↓
+┌──────────────────────────────┐
+│ Enters email + password      │
+└──────┬───────────────────────┘
+       ↓
+┌──────────────────────────────┐
+│ Clicks INITIALIZE LOGIN      │
+└──────┬───────────────────────┘
+       ↓
+┌──────────────────────────────────────┐
+│ Redirects to Keycloak login page     │
+│ (OAuth2/OIDC)                        │
+└──────┬───────────────────────────────┘
+       ↓
+┌──────────────────────────────┐
+│ Keycloak validates & returns │
+│ JWT + Refresh Token          │
+└──────┬───────────────────────┘
+       ↓
+┌──────────────────────────────┐
+│ Frontend stores JWT in       │
+│ localStorage/sessionStorage  │
+└──────┬───────────────────────┘
+       ↓
+┌──────────────────────────────┐
+│ Redirects to Map Explorer    │
+│ (if PLAYER) or Admin         │
+│ (if ADMIN)                   │
+└──────┬───────────────────────┘
+       ↓
+┌──────────────┐
+│   Success    │
+└──────────────┘
+```
+
+---
+
+### 2. **Fluxo de Scan (Encontrar Moedas)**
+```
+┌─────────────────────────┐
+│ Player views Map        │
+│ (Real position + coins) │
+└────────┬────────────────┘
+         ↓
+┌─────────────────────────┐
+│ Clicks TAP TO SCAN btn  │
+└────────┬────────────────┘
+         ↓
+┌────────────────────────────────────┐
+│ Frontend captures:                 │
+│ - Current lat/lng (Geolocation API)│
+│ - Timestamp                        │
+│ - Username (from JWT)              │
+└────────┬─────────────────────────┬─┘
+         │                         │
+         ↓                         ↓
+┌─────────────────┐    ┌────────────────────────┐
+│ Send to Backend │    │ POST /api/discovery/   │
+│ with JWT Bearer │    │       scan             │
+└────────┬────────┘    └────────┬───────────────┘
+         │                      ↓
+         └─────────────────────────────────────┐
+                                             │
+                    ┌────────────────────────┴────┐
+                    ↓                             │
+            ┌─────────────────────────┐          │
+            │ AntiCheatService:       │          │
+            │ Check velocity < 25km/h │          │
+            └────────┬────────────────┘          │
+                     ↓                           │
+            ┌─────────────────────────┐          │
+            │ DiscoveryService:       │          │
+            │ Query Redis GeoIndex    │          │
+            │ (radius: 10m)           │          │
+            └────────┬────────────────┘          │
+                     ↓                           │
+         ┌───────────────────────┐               │
+         │ Coin found? YES/NO    │               │
+         └────┬─────────────┬────┘               │
+              │             │                   │
+        YES ◄─┘             └─► NO              │
+        │                        │              │
+        ↓                        ↓              │
+┌──────────────────┐   ┌────────────────────┐  │
+│ Increment wallet │   │ Return "No luck    │  │
+│ Update Redis     │   │ this time"         │  │
+│ DB transaction   │   └────────┬───────────┘  │
+└────────┬─────────┘            │              │
+         │                      │              │
+         └─────────────┬────────┘              │
+                       ↓                       │
+              ┌─────────────────┐              │
+              │ Emit WebSocket  │              │
+              │ notification    │              │
+              └────────┬────────┘              │
+                       ↓                       │
+              ┌─────────────────────────────┐  │
+              │ Response 200 + wallet data  │  │
+              └────────┬────────────────────┘  │
+                       ↓                       │
+                   FRONTEND                   │
+                       ↓                       │
+              ┌─────────────────────────────┐  │
+              │ Update UI:                  │  │
+              │ - Saldo exibido            │  │
+              │ - Animação de sucesso      │  │
+              │ - Coin desaparece do mapa  │  │
+              └─────────────────────────────┘  │
+                                              │
+                                    ┌─────────┘
+                                    ↓
+                           ┌─────────────────┐
+                           │   Complete      │
+                           └─────────────────┘
+```
+
+---
+
+### 3. **Fluxo de Pagamento (50% Protocol)**
+```
+┌──────────────────────────┐
+│ Player opens Wallet      │
+│ Tab                      │
+└────────┬─────────────────┘
+         ↓
+┌──────────────────────────────┐
+│ Selects amount (€10, €25,    │
+│ €50, €100 ou custom)         │
+└────────┬─────────────────────┘
+         ↓
+┌───────────────────────────────────────┐
+│ Fills payment form:                   │
+│ - Card number                         │
+│ - Expiry (MM/YY)                      │
+│ - CVC                                 │
+└────────┬──────────────────────────────┘
+         ↓
+┌──────────────────────────────┐
+│ Clicks TOP-UP WITH CREDIT    │
+│ CARD button                  │
+└────────┬─────────────────────┘
+         ↓
+┌──────────────────────────────────────┐
+│ Stripe.js encrypts card data         │
+│ POST /api/wallet/topup               │
+└────────┬─────────────────────────────┘
+         ↓
+┌──────────────────────────────────────┐
+│ BACKEND:                             │
+│ StripePaymentService.processPayment()│
+└────────┬─────────────────────────────┘
+         ↓
+┌──────────────────────────┐
+│ Call Stripe API          │
+│ Create charge            │
+└────────┬─────────────────┘
+         ↓
+┌──────────────────────────┐
+│ Payment successful?      │
+└────┬──────────────────┬──┘
+     │                  │
+  YES│                  │NO
+     ↓                  ↓
+┌──────────────┐   ┌─────────────┐
+│ Calculate:   │   │ Return 400  │
+│ - 50% user   │   │ error msg   │
+│ - 50% pool   │   └─────────────┘
+└────────┬─────┘        │
+         │              │
+         │              └──► FRONTEND
+         ↓                    ↓
+┌─────────────────────────┐  │
+│ IdempotencyService:     │  │
+│ Save PaymentEvent       │  │
+│ (to prevent duplicates) │  │
+└────────┬────────────────┘  │
+         ↓                    │
+┌──────────────────────────┐  │
+│ Step 1: Credit user      │  │
+│ wallet += €50 (50%)      │  │
+│ Update PostgreSQL        │  │
+└────────┬─────────────────┘  │
+         ↓                    │
+┌───────────────────────────────┐
+│ Step 2: Publish to RabbitMQ:  │
+│ Queue: coin.distribution      │
+│ Message: {amount: €25, pool}  │
+└────────┬──────────────────────┘
+         ↓
+┌──────────────────────────────────┐
+│ CoinDistributionWorker:          │
+│ Listens to coin.distribution     │
+│ (async processor)                │
+└────────┬─────────────────────────┘
+         ↓
+┌──────────────────────────────────┐
+│ Generate random coins:           │
+│ - Count: € pool value / coin cost│
+│ - Coordinates: random lat/lng    │
+│ - Save to PostgreSQL             │
+│ - Mirror to Redis GeoIndex       │
+└────────┬─────────────────────────┘
+         ↓
+┌──────────────────────────────────┐
+│ Send Push Notifications:         │
+│ "New coins spawned in your area" │
+│ (all connected players)          │
+└────────┬─────────────────────────┘
+         ↓
+┌──────────────────────────────────┐
+│ Response 200 to frontend         │
+│ {                                │
+│   "success": true,               │
+│   "newBalance": 1290.50,         │
+│   "coinsGenerated": 25           │
+│ }                                │
+└────────┬─────────────────────────┘
+         ↓
+    FRONTEND
+         ↓
+┌──────────────────────────────────┐
+│ Update UI:                       │
+│ - Show success animation         │
+│ - Update saldo display           │
+│ - Redirect to Map                │
+└──────────────────────────────────┘
+```
+
+---
+
+### 4. **Fluxo de Compra de Tempo**
+```
+┌────────────────────────────────┐
+│ Player at Wallet screen        │
+│ Section: Navigator Access      │
+└────────┬───────────────────────┘
+         ↓
+┌─────────────────────────┐
+│ Selects time option:    │
+│ - Standard: €5/1h       │
+│ - Surge: €12/3h (2x)    │
+└────────┬────────────────┘
+         ↓
+┌─────────────────────────┐
+│ Clicks BUY button       │
+└────────┬────────────────┘
+         ↓
+┌──────────────────────────────┐
+│ POST /api/wallet/buy-time    │
+│ {duration: 1, price: 5}      │
+└────────┬─────────────────────┘
+         ↓
+┌──────────────────────────────┐
+│ WalletService checks:        │
+│ - Sufficient balance?        │
+│ - Valid user?                │
+└────────┬─────────────────────┘
+         ↓
+┌──────────────────────────────┐
+│ Deduct from wallet:          │
+│ balance -= €5                │
+└────────┬─────────────────────┘
+         ↓
+┌───────────────────────────────┐
+│ SessionTimerService:          │
+│ Add 1 hour to user session    │
+│ Store in DB + Redis cache     │
+└────────┬──────────────────────┘
+         ↓
+┌───────────────────────────────┐
+│ Frontend countdown starts:    │
+│ Geolocation API active        │
+│ Map shows remaining time      │
+└───────────────────────────────┘
+```
+
+---
+
+### 5. **Fluxo de Leaderboard**
+```
+┌──────────────────────────┐
+│ Player plays game        │
+│ Captures coins           │
+└────────┬─────────────────┘
+         ↓
+┌──────────────────────────┐
+│ Transaction recorded:    │
+│ - user_id               │
+│ - coin_id               │
+│ - timestamp             │
+│ Save to PostgreSQL       │
+└────────┬─────────────────┘
+         ↓
+┌──────────────────────────┐
+│ Update Redis SortedSet:  │
+│ "leaderboard"           │
+│ {user: score}           │
+└────────┬─────────────────┘
+         ↓
+┌───────────────────────────┐
+│ Player visits Rankings    │
+│ tab (LEADERS)             │
+└────────┬──────────────────┘
+         ↓
+┌───────────────────────────┐
+│ Frontend requests:        │
+│ GET /api/leaderboard/     │
+│ top100                    │
+└────────┬──────────────────┘
+         ↓
+┌───────────────────────────┐
+│ Backend queries Redis     │
+│ Get top 100 with scores   │
+│ (cached data)             │
+└────────┬──────────────────┘
+         ↓
+┌───────────────────────────┐
+│ Response 200 + data:      │
+│ [{rank: 1, player: ..., │
+│   coins: 285450}]         │
+└────────┬──────────────────┘
+         ↓
+┌───────────────────────────┐
+│ Frontend renders:         │
+│ - Podium (top 3)         │
+│ - List (4-100)           │
+│ - Your rank card         │
+└───────────────────────────┘
+```
+
+---
+
+## 📦 ESTRUTURA DE DADOS
+
+### PostgreSQL Schema
+```sql
+-- Users & Authentication
+CREATE TABLE users (
+  id UUID PRIMARY KEY,
+  username VARCHAR(50) UNIQUE,
+  email VARCHAR(100) UNIQUE,
+  keycloak_id VARCHAR(255),
+  role ENUM('PLAYER', 'ADMIN'),
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+);
+
+-- Coins (treasure)
+CREATE TABLE coins (
+  id UUID PRIMARY KEY,
+  latitude DECIMAL(10,8),
+  longitude DECIMAL(11,8),
+  created_at TIMESTAMP,
+  collected_by UUID REFERENCES users(id),
+  collected_at TIMESTAMP,
+  is_active BOOLEAN DEFAULT true
+);
+
+-- User Wallets
+CREATE TABLE wallets (
+  id UUID PRIMARY KEY,
+  user_id UUID UNIQUE REFERENCES users(id),
+  balance DECIMAL(10,2),
+  collected_coins_count INT,
+  updated_at TIMESTAMP
+);
+
+-- Payment Idempotency
+CREATE TABLE payment_events (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  stripe_payment_id VARCHAR(255) UNIQUE,
+  amount DECIMAL(10,2),
+  status ENUM('pending', 'success', 'failed'),
+  created_at TIMESTAMP
+);
+
+-- Transaction History
+CREATE TABLE transactions (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  coin_id UUID REFERENCES coins(id),
+  amount DECIMAL(10,2),
+  type ENUM('coin_collection', 'payment', 'purchase'),
+  timestamp TIMESTAMP
+);
+
+-- Navigation Sessions
+CREATE TABLE user_sessions (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  navigation_time_remaining INT, -- seconds
+  expires_at TIMESTAMP
+);
+```
+
+### Redis Data Structures
+```
+# Geo-Index for coins
+geo_coins:zones (GEOHASH)
+  Members: {coord: "lat,lng", score: geo_distance}
+
+# Anti-Cheat tracking
+anti_cheat:user:{id} (HASH)
+  {last_lat: 35.6895, last_lng: 139.6917, last_time: 1711000000}
+
+# Leaderboard (real-time)
+leaderboard (ZSET - Sorted Set)
+  {user_id: score (coin count)}
+  Score range: 0 → 999999
+
+# User cache
+cache:user:{id} (HASH)
+  {username, balance, collected_count}
+
+# Session timers
+session:user:{id} (STRING - TTL)
+  Value: time_remaining_seconds
+```
+
+---
+
+## 🔌 API ENDPOINTS NECESSÁRIOS
+
+### Authentication (Keycloak)
+```
+POST   /auth/login              (OAuth2 redirect)
+POST   /auth/logout
+POST   /auth/refresh-token
+GET    /auth/me                 (get current user)
+```
+
+### Map & Discovery
+```
+POST   /api/discovery/scan      (main game action)
+GET    /api/coins               (get nearby coins)
+GET    /api/coins/all           (admin only)
+```
+
+### Wallet & Payments
+```
+GET    /api/wallet              (get user wallet)
+POST   /api/wallet/topup        (Stripe payment)
+POST   /api/wallet/buy-time     (purchase navigation)
+GET    /api/wallet/transactions (history)
+```
+
+### Leaderboard
+```
+GET    /api/leaderboard/top100
+GET    /api/leaderboard/me      (user's position)
+```
+
+### Admin
+```
+GET    /api/admin/stats         (KPIs)
+GET    /api/admin/users         (list)
+PUT    /api/admin/users/{id}    (modify)
+DELETE /api/admin/users/{id}    (delete)
+POST   /api/admin/coins/seed    (manual seed)
+```
+
+### Webhooks
+```
+POST   /api/webhooks/stripe    (Stripe payment confirmation)
+```
+
+---
+
+## 🚀 CHECKLIST DE IMPLEMENTAÇÃO
+
+### Phase 1: Infraestrutura (2 dias)
+- [ ] Docker-compose.yml criado
+- [ ] PostgreSQL 15 rodando
+- [ ] Redis Alpine rodando
+- [ ] RabbitMQ 3-management rodando
+- [ ] Keycloak 22.0.1 configurado
+- [ ] Realm "aether-quest" criado
+- [ ] Client "aether-client" criado
+- [ ] Database schema criada
+
+### Phase 2: Back-end (5 dias)
+- [ ] Spring Boot project scaffold
+- [ ] Entidades JPA completas
+- [ ] SecurityConfig com Keycloak OAuth2
+- [ ] DiscoveryService + AntiCheatService
+- [ ] WalletService + PaymentService
+- [ ] StripePaymentService integrada
+- [ ] RabbitMQ listeners configurados
+- [ ] Endpoints RESTful funcionando
+- [ ] Autenticação JWT validando
+- [ ] Testes unitários básicos
+
+### Phase 3: Front-end (3 dias)
+- [ ] React project com Vite criado
+- [ ] Componentes convertidos de HTML → JSX
+- [ ] Tailwind CSS integrado
+- [ ] Keycloak integration (useAuth hook)
+- [ ] Geolocation API (useGeolocation hook)
+- [ ] Google Maps API integrada
+- [ ] Stripe.js integrado
+- [ ] API service layer criado
+- [ ] WebSocket listeners para real-time
+
+### Phase 4: Testes & Deploy (3 dias)
+- [ ] E2E testes com Cypress
+- [ ] Load testing com JMeter
+- [ ] Security audit
+- [ ] CI/CD pipeline (GitHub Actions)
+- [ ] Staging deployment
+- [ ] Production deployment
+
+---
+
+## 📞 PRÓXIMAS AÇÕES RECOMENDADAS
+
+1. **Começar pelo Back-end** (mais crítico)
+   - Setup Docker infrastructure
+   - Scaffold Spring Boot projeto
+   - Implementar autenticação
+
+2. **Paralelizar Front-end**
+   - Converter componentes HTML → React
+   - Criar services layer
+   - Integrar APIs conforme pronta
+
+3. **Testes contínuos**
+   - Cada componente com testes
+   - Integration tests entre serviços
+   - Load tests antes de deploy
+
+---
+
+**Documento gerado em 21/03/2026**
+**Próxima revisão: ao completar Phase 2 (Back-end)**
+

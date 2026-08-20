@@ -1,0 +1,53 @@
+{
+  "realm": "aether-quest",
+  "enabled": true,
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "editUsernameAllowed": true,
+  "roles": {
+    "realm": [
+      { "name": "PLAYER", "description": "Regular player access" },
+      { "name": "ADMIN", "description": "Game administrator access" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "aether-client",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "webOrigins": ["*"],
+      "redirectUris": ["http://localhost:3000/*", "http://localhost:5173/*", "http://localhost:9001/*", "http://moneyback.com.br/*", "https://moneyback.com.br/*", "https://keycloak.moneyback.com.br/*"]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@aetherquest.com",
+      "firstName": "System",
+      "lastName": "Admin",
+      "credentials": [{ "type": "password", "value": "Hitachi$20261", "temporary": false }],
+      "realmRoles": ["ADMIN", "PLAYER"]
+    },
+    {
+      "username": "pilot01",
+      "enabled": true,
+      "email": "pilot01@aetherquest.com",
+      "firstName": "Vance",
+      "lastName": "Pilot",
+      "credentials": [{ "type": "password", "value": "Hitachi$20261", "temporary": false }],
+      "realmRoles": ["PLAYER"]
+    },
+    {
+      "username": "hunterX",
+      "enabled": true,
+      "email": "hunter@aetherquest.com",
+      "firstName": "Jade",
+      "lastName": "Hunter",
+      "credentials": [{ "type": "password", "value": "Hitachi$20261", "temporary": false }],
+      "realmRoles": ["PLAYER"]
+    }
+  ]
+}
