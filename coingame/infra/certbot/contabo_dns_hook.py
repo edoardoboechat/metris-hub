@@ -63,6 +63,14 @@ def challenge_record_name(domain: str) -> str:
     return f"_acme-challenge.{normalized}"
 
 
+def resolve_zone(certbot_domain: str) -> str:
+    # Determine the correct DNS zone based on the domain being validated
+    normalized = certbot_domain[2:] if certbot_domain.startswith("*.") else certbot_domain
+    if normalized.endswith("metris.com.br"):
+        return "metris.com.br"
+    return "moneyback.com.br"
+
+
 def list_records(zone: str, token: str):
     response = api_request("GET", f"/dns/zones/{zone}/records?page=1&size=500", token)
     return response.get("data", [])
@@ -70,10 +78,11 @@ def list_records(zone: str, token: str):
 
 def create_record():
     token = get_access_token()
-    zone = os.environ.get("CONTABO_DNS_ZONE", "moneyback.com.br").strip() or "moneyback.com.br"
+    cert_domain = required_env("CERTBOT_DOMAIN")
+    zone = resolve_zone(cert_domain)
     ttl = int(os.environ.get("CONTABO_DNS_TTL", "60"))
     propagation_wait = int(os.environ.get("CONTABO_DNS_PROPAGATION_SECONDS", "90"))
-    name = challenge_record_name(required_env("CERTBOT_DOMAIN"))
+    name = challenge_record_name(cert_domain)
     value = required_env("CERTBOT_VALIDATION")
 
     api_request(
@@ -93,8 +102,9 @@ def create_record():
 
 def cleanup_record():
     token = get_access_token()
-    zone = os.environ.get("CONTABO_DNS_ZONE", "moneyback.com.br").strip() or "moneyback.com.br"
-    name = challenge_record_name(required_env("CERTBOT_DOMAIN"))
+    cert_domain = required_env("CERTBOT_DOMAIN")
+    zone = resolve_zone(cert_domain)
+    name = challenge_record_name(cert_domain)
     value = required_env("CERTBOT_VALIDATION")
 
     for record in list_records(zone, token):
