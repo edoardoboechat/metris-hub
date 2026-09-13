@@ -132,6 +132,16 @@ services:
     networks:
       - aether_net
 
+  security_agent_portal:
+    image: ghcr.io/edoardoboechat/security-agent-portal:main
+    pull_policy: always
+    container_name: security_agent_portal
+    restart: unless-stopped
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+    networks:
+      - aether_net
+
   certbot:
     image: python:3.12-alpine
     container_name: aether_certbot
