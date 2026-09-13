@@ -142,6 +142,40 @@ services:
     networks:
       - aether_net
 
+  certbot_metris:
+    image: python:3.12-alpine
+    container_name: aether_certbot_metris
+    profiles: ['certbot']
+    environment:
+      CONTABO_CLIENT_ID: ${CONTABO_CLIENT_ID:-}
+      CONTABO_CLIENT_SECRET: ${CONTABO_CLIENT_SECRET:-}
+      CONTABO_API_USER: ${CONTABO_API_USER:-}
+      CONTABO_API_PASSWORD: ${CONTABO_API_PASSWORD:-}
+      CONTABO_DNS_ZONE: metris.com.br
+      CONTABO_DNS_TTL: ${CONTABO_DNS_TTL:-60}
+      CONTABO_DNS_PROPAGATION_SECONDS: ${CONTABO_DNS_PROPAGATION_SECONDS:-90}
+      CERTBOT_EMAIL: ${CERTBOT_EMAIL:-admin@metris.com.br}
+    volumes:
+      - certbot_state:/etc/letsencrypt
+      - ./infra/certs:/output
+      - ./infra/certbot:/opt/certbot:ro
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        set -eu
+        if [ -z "$${CONTABO_CLIENT_ID}" ] || [ -z "$${CONTABO_CLIENT_SECRET}" ] || [ -z "$${CONTABO_API_USER}" ] || [ -z "$${CONTABO_API_PASSWORD}" ]; then
+          echo "Contabo API credentials not configured. Skipping issuance."
+          exit 0
+        fi
+        python -m pip install --no-cache-dir certbot >/tmp/pip.log 2>&1
+        certbot certonly           --config /opt/certbot/cli.ini           --cert-name metris.com.br           --keep-until-expiring           --manual           --preferred-challenges dns           --manual-auth-hook "python3 /opt/certbot/contabo_dns_hook.py auth"           --manual-cleanup-hook "python3 /opt/certbot/contabo_dns_hook.py cleanup"           --email "$${CERTBOT_EMAIL}"           -d metris.com.br           -d '*.metris.com.br'
+        mkdir -p /output/live/metris.com.br
+        cp /etc/letsencrypt/live/metris.com.br/fullchain.pem /output/live/metris.com.br/fullchain.pem
+        cp /etc/letsencrypt/live/metris.com.br/privkey.pem /output/live/metris.com.br/privkey.pem
+    networks:
+      - aether_net
+
   certbot:
     image: python:3.12-alpine
     container_name: aether_certbot
